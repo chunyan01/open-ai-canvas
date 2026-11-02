@@ -10,7 +10,15 @@ import (
 	"yingce/backend/internal/repository"
 )
 
-const DefaultBrandName = "影策"
+const (
+	DefaultBrandName       = "chunyan全功能工作台"
+	legacyDefaultBrandName = "影策"
+)
+
+func isInheritedBrandSenderName(value string) bool {
+	name := strings.TrimSpace(value)
+	return name == "" || name == DefaultBrandName || name == legacyDefaultBrandName
+}
 
 // Host 由组合根注入，避免 auth → service 回环。
 type Host interface {

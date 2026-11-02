@@ -63,3 +63,36 @@ func TestCanvasHistoryCompositeKeyMigration(t *testing.T) {
 		t.Fatalf("history refs not copied/verified: %d %v", count, err)
 	}
 }
+
+func TestIDSequenceMigrationReplacesSchemaSeededRows(t *testing.T) {
+	source, err := database.Open(database.Config{Driver: "sqlite", DSN: "file:id-sequence-source?mode=memory&cache=shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := database.Open(database.Config{Driver: "sqlite", DSN: "file:id-sequence-target?mode=memory&cache=shared"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, db := range []*gorm.DB{source, target} {
+		if err := db.AutoMigrate(&model.IDSequence{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := target.Create(&model.IDSequence{Name: "id:MODEL", Value: 0}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := source.Create(&model.IDSequence{Name: "id:MODEL", Value: 42}).Error; err != nil {
+		t.Fatal(err)
+	}
+	count, err := migrateTable[model.IDSequence]("id_sequences").run(source, target, true)
+	if err != nil || count != 1 {
+		t.Fatalf("ID sequence not replaced: %d %v", count, err)
+	}
+	var sequence model.IDSequence
+	if err := target.First(&sequence, "name = ?", "id:MODEL").Error; err != nil {
+		t.Fatal(err)
+	}
+	if sequence.Value != 42 {
+		t.Fatalf("ID sequence value = %d, want 42", sequence.Value)
+	}
+}

@@ -162,6 +162,14 @@ func migrateTable[T any](name string) tableMigration {
 			if err := source.Order(primaryKey).Find(&sourceRows).Error; err != nil {
 				return 0, err
 			}
+			if copyRows && name == "id_sequences" {
+				// Schema migration seeds zero-valued sequence rows before the
+				// source tables are copied. Replace those rows with the source
+				// snapshot so its allocated values are preserved.
+				if err := target.Where("1 = 1").Delete(new(T)).Error; err != nil {
+					return 0, fmt.Errorf("清理目标 ID 序列：%w", err)
+				}
+			}
 			if err := validateExplicitStringLengths(source, name, sourceRows); err != nil {
 				return 0, err
 			}

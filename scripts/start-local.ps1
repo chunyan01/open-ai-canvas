@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param()
 
 $ErrorActionPreference = "Stop"
@@ -9,11 +9,13 @@ Import-CanvasWindowsProxy
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $backendDir = Join-Path $repoRoot "backend"
 $webDir = Join-Path $repoRoot "web"
+$agentRuntimeDir = Join-Path $backendDir "agent-runtime\pi"
+$agentRuntimeModules = Join-Path $agentRuntimeDir "node_modules"
 $dataDir = Join-Path $repoRoot ".local\project-workbench-debug"
 $goBuildCache = Join-Path $repoRoot ".local\cache\go-build"
 $goModuleCache = Join-Path $repoRoot ".local\cache\go-mod"
 
-foreach ($commandName in @("go", "bun")) {
+foreach ($commandName in @("go", "bun", "npm")) {
     if (-not (Get-Command $commandName -ErrorAction SilentlyContinue)) {
         throw "未找到 $commandName，请先安装项目要求的运行时。"
     }
@@ -23,7 +25,7 @@ foreach ($directory in @($dataDir, $goBuildCache, $goModuleCache)) {
     New-Item -ItemType Directory -Force -Path $directory | Out-Null
 }
 
-$viteBinary = Join-Path $webDir "node_modules\.bin\vite"
+$viteBinary = Join-Path $webDir "node_modules\vite\bin\vite.js"
 if (-not (Test-Path -LiteralPath $viteBinary)) {
     Write-Host "web/node_modules 不存在，正在执行 bun install --frozen-lockfile..." -ForegroundColor Yellow
     Push-Location $webDir
@@ -31,6 +33,19 @@ if (-not (Test-Path -LiteralPath $viteBinary)) {
         & bun install --frozen-lockfile
         if ($LASTEXITCODE -ne 0) {
             throw "bun install 失败，无法启动前端。"
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
+if (-not (Test-Path -LiteralPath $agentRuntimeModules)) {
+    Write-Host "Agent runtime 依赖不存在，正在执行 npm ci..." -ForegroundColor Yellow
+    Push-Location $agentRuntimeDir
+    try {
+        & npm ci --omit=dev --ignore-scripts
+        if ($LASTEXITCODE -ne 0) {
+            throw "Agent runtime 依赖安装失败，无法启动画布 Agent。"
         }
     } finally {
         Pop-Location
@@ -74,7 +89,7 @@ Set-Location -LiteralPath $backendDirLiteral
 `$env:CANVAS_BACKEND_DATA_DIR = $dataDirLiteral
 `$env:GOCACHE = $(ConvertTo-PowerShellLiteral $goBuildCache)
 `$env:GOMODCACHE = $(ConvertTo-PowerShellLiteral $goModuleCache)
-Write-Host '影策后端：http://127.0.0.1:8080' -ForegroundColor Cyan
+Write-Host 'chunyan全功能工作台后端：http://127.0.0.1:8080' -ForegroundColor Cyan
 go run ./cmd/server
 "@
 
@@ -82,7 +97,7 @@ $webCommand = @"
 `$ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $webDirLiteral
 `$env:VITE_API_PROXY_TARGET = 'http://127.0.0.1:8080'
-Write-Host '影策前端：http://localhost:3000' -ForegroundColor Cyan
+Write-Host 'chunyan全功能工作台前端：http://localhost:3000' -ForegroundColor Cyan
 bun run dev
 "@
 

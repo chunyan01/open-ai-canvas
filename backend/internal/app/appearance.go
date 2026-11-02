@@ -41,8 +41,10 @@ const (
 )
 
 const (
-	defaultAppearanceBrandName = "影策"
-	defaultAppearanceBrandSlug = "open-ai-canvas"
+	defaultAppearanceBrandName = "chunyan全功能工作台"
+	defaultAppearanceBrandSlug = "chunyan-full-workbench"
+	legacyAppearanceBrandName  = "影策"
+	legacyAppearanceBrandSlug  = "open-ai-canvas"
 	defaultAppearanceSkinID    = "classic"
 	defaultAppearanceLogoURL   = "/logo.svg"
 	defaultAppearanceVideoURL  = "https://boss-shjd.biliapi.net/updream/aniforge/video/video_bbcb00bd-650d-4249-9346-5cd21fd2484c_m1hc-u0-1pu13x-3v1s.mp4"
@@ -297,7 +299,7 @@ func (s *Service) ResetAppearance(actor *model.User) (*AdminAppearanceSetting, e
 		return nil, err
 	}
 	after := defaultAppearanceSetting()
-	if err := s.appendAdminAudit(actor, "appearance.reset", "system_setting", appearanceSettingKey, "恢复影策默认品牌标识", map[string]any{"before": before, "after": after}); err != nil {
+	if err := s.appendAdminAudit(actor, "appearance.reset", "system_setting", appearanceSettingKey, "恢复默认品牌标识", map[string]any{"before": before, "after": after}); err != nil {
 		return nil, err
 	}
 	return s.AdminAppearance(actor)
@@ -445,12 +447,19 @@ func (s *Service) readAppearance() (*model.SystemSetting, AppearanceSetting, err
 	}
 	value.SchemaVersion = appearanceSchemaVersion
 	value.BrandName = strings.TrimSpace(value.BrandName)
+	value.BrandSlug = strings.ToLower(strings.TrimSpace(value.BrandSlug))
+	if value.BrandName == legacyAppearanceBrandName && value.BrandSlug == legacyAppearanceBrandSlug {
+		value.BrandName = defaultAppearanceBrandName
+		value.BrandSlug = defaultAppearanceBrandSlug
+	}
 	if value.BrandName == "" {
 		value.BrandName = defaultAppearanceBrandName
 	}
-	value.BrandSlug = strings.ToLower(strings.TrimSpace(value.BrandSlug))
 	if value.BrandSlug == "" {
 		value.BrandSlug = defaultAppearanceBrandSlug
+	}
+	if value.Canvas.AgentName == legacyAppearanceBrandName {
+		value.Canvas.AgentName = defaultCanvasAgentName
 	}
 	value.AuthHeroTitle = normalizeAppearanceCopy(value.AuthHeroTitle)
 	if value.AuthHeroTitle == "" {

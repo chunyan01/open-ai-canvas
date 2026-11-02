@@ -338,7 +338,7 @@ func normalizeEmailSetting(value EmailSettingValue) EmailSettingValue {
 }
 
 func (s *Service) publicEmailSetting(setting *model.SystemSetting, value EmailSettingValue) *PublicEmailSetting {
-	inherited := value.FromName == "" || value.FromName == DefaultBrandName
+	inherited := isInheritedBrandSenderName(value.FromName)
 	value = resolveEmailSender(value, s.host.BrandName())
 	result := &PublicEmailSetting{
 		Enabled: value.Enabled, Host: value.Host, Port: value.Port, Username: value.Username, Encryption: value.Encryption,
@@ -423,7 +423,7 @@ func validateRegistrationEmailDomain(email string, allowedDomains []string) erro
 }
 
 func resolveEmailSender(value EmailSettingValue, brandName string) EmailSettingValue {
-	if value.FromName == "" || value.FromName == DefaultBrandName {
+	if isInheritedBrandSenderName(value.FromName) {
 		value.FromName = brandName
 	}
 	return value
